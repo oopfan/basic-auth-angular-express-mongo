@@ -1,6 +1,13 @@
 {
   "name": "basic-auth-angular-express-mongo",
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "If your new Angular web app needs Basic Auth with JWT security then clone this repo and build from there",
+  "author": "Brian Morgan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oopfan/basic-auth-angular-express-mongo.git"
+  },
   "scripts": {
     "ng": "ng",
     "start": "./node_modules/.bin/ng serve  --proxy-config ./proxy.json",
