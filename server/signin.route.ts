@@ -8,7 +8,9 @@ export function signinUser(req: Request, res: Response) {
 
   const user = authenticate(username, password);
   if (user) {
-    res.status(200).cookie('user', user.username, { sameSite: 'lax' }).json({username: user.username});
+    const session = req['session'];
+    session.username = username;
+    res.status(200).json({username});
   }
   else {
     res.status(422).json({username: 'Username not found', password: 'Invalid password'});

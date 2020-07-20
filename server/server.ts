@@ -8,16 +8,27 @@ import {availableUser} from './username.route';
 
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const cookieParser = require('cookie-parser')
+const session = require('express-session');
 
 const corsOptions = {
     origin: 'http://localhost:4200',
     credentials: true
 };
-  
+
+const sessionOptions = {
+    secret: 'ZLv3Lykqci5nGod(jix@lWCtB0GxGsumtG4K(y#c2)fBKHT7tk',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        sameSite: 'lax',    // Override to satisfy Firefox
+        httpOnly: false,    // The default is true
+        maxAge: 2592000000  // 30 days
+    }
+};
+
 const app: Application = express();
+app.use(session(sessionOptions));
 app.use(cors(corsOptions));
-app.use(cookieParser());
 app.use(bodyParser.json());
 
 app.route('/api/auth/signin').post(signinUser);

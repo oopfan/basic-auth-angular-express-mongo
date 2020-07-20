@@ -9,7 +9,9 @@ export function signupUser(req: Request, res: Response) {
   if (available(username)) {
     const user = register(username, password, passwordConfirmation);
     if (user) {
-      res.status(201).cookie('user', user.username, { sameSite: 'lax' }).json({username: user.username});
+      const session = req['session'];
+      session.username = username;
+      res.status(201).json({username});
     }
     else {
       res.status(422).json({passwordConfirmation: 'Passwords must match'});
