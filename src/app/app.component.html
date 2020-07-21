@@ -7,18 +7,23 @@
         </div>
         <div class="navbar-menu">
             <div class="navbar-end">
-                <ng-container *ngIf="signedIn$ | async">
-                    <a class="navbar-item" routerLink="/signout" routerLinkActive="is-active">
-                        <span class="is-size-7">Sign Out</span>
-                    </a>
-                </ng-container>
-                <ng-container *ngIf="!(signedIn$ | async)">
-                    <a class="navbar-item" routerLink="/signin" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="is-active">
-                        <span class="is-size-7">Sign In</span>
-                    </a>
-                    <a class="navbar-item" routerLink="/signup" routerLinkActive="is-active">
-                        <span class="is-size-7">Sign Up</span>
-                    </a>
+                <ng-container *ngIf="authStatus$ | async as authStatus">
+                    <ng-container *ngIf="authStatus.signedIn">
+                        <div class="navbar-item">
+                            Welcome {{ authStatus.username }}
+                        </div>
+                        <a class="navbar-item" routerLink="/signout" routerLinkActive="is-active">
+                            <span class="is-size-7">Sign Out</span>
+                        </a>
+                    </ng-container>
+                    <ng-container *ngIf="!authStatus.signedIn">
+                        <a class="navbar-item" routerLink="/signin" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="is-active">
+                            <span class="is-size-7">Sign In</span>
+                        </a>
+                        <a class="navbar-item" routerLink="/signup" routerLinkActive="is-active">
+                            <span class="is-size-7">Sign Up</span>
+                        </a>
+                    </ng-container>
                 </ng-container>
             </div>
         </div>

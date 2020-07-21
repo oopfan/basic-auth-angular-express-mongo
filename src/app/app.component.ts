@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Observable } from 'rxjs';
-import { AuthService } from './auth/auth.service';
+import { AuthService, AuthStatus } from './auth/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -9,10 +9,10 @@ import { AuthService } from './auth/auth.service';
 })
 export class AppComponent implements OnInit {
   title = 'basic-auth-angular-express-mongo';
-  signedIn$: Observable<boolean>;
+  authStatus$: Observable<AuthStatus>;
 
   constructor(public authService: AuthService) {
-    this.signedIn$ = this.authService.signedIn$;
+    this.authStatus$ = this.authService.authStatus$;
   }
 
   ngOnInit(): void {

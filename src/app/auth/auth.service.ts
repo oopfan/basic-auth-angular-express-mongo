@@ -23,12 +23,17 @@ interface SignedinResponse {
   username: string;
 }
 
+export interface AuthStatus {
+  signedIn: boolean;
+  username: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
   rootUrl = 'http://localhost:9000/api';
-  signedIn$ = new BehaviorSubject<boolean>(false);
+  authStatus$ = new BehaviorSubject<AuthStatus>({ signedIn: false, username: undefined });
 
   constructor(private http: HttpClient) { }
 
@@ -37,18 +42,22 @@ export class AuthService {
   }
 
   signup(credentials: SignupCredentials) {
-    return this.http.post<SignupResponse>(this.rootUrl + '/auth/signup', credentials, { withCredentials: true }).pipe(tap(() => { this.signedIn$.next(true); }));
+    return this.http.post<SignupResponse>(this.rootUrl + '/auth/signup', credentials, { withCredentials: true })
+      .pipe(tap((value) => { this.authStatus$.next({ signedIn: true, username: value.username }); }));
   }
 
   checkAuth() {
-    return this.http.get<SignedinResponse>(this.rootUrl + '/auth/signedin', { withCredentials: true }).pipe(tap((value) => { this.signedIn$.next(value.authenticated); }));
+    return this.http.get<SignedinResponse>(this.rootUrl + '/auth/signedin', { withCredentials: true })
+      .pipe(tap((value) => { this.authStatus$.next({ signedIn: value.authenticated, username: value.username }); }));
   }
 
   signout() {
-    return this.http.post<any>(this.rootUrl + '/auth/signout', {}, { withCredentials: true }).pipe(tap(() => { this.signedIn$.next(false); }));
+    return this.http.post<any>(this.rootUrl + '/auth/signout', {}, { withCredentials: true })
+      .pipe(tap(() => { this.authStatus$.next({ signedIn: false, username: undefined }); }));
   }
 
   signin(credentials: SigninCredentials) {
-    return this.http.post<SigninCredentials>(this.rootUrl + '/auth/signin', credentials, { withCredentials: true }).pipe(tap(() => { this.signedIn$.next(true); }));
+    return this.http.post<SigninCredentials>(this.rootUrl + '/auth/signin', credentials, { withCredentials: true })
+      .pipe(tap((value) => { this.authStatus$.next({ signedIn: true, username: value.username }); }));
   }
 }
