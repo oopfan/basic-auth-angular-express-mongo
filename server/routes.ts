@@ -45,7 +45,18 @@ export function signedinUser(req: Request, res: Response) {
     const username = session.username;
 
     if (username) {
-        res.status(200).json({authenticated: true, username});
+        // Let's make sure that the user is in the database
+        const searchUser = { username };
+        UserModel.findOne(searchUser, function(err, user) {
+            if (!err && user) {
+                res.status(200).json({authenticated: true, username});
+            }
+            else {
+                const session = req['session'];
+                session.username = undefined;
+                res.status(200).json({authenticated: false, username: null});
+            }
+        });
     }
     else {
         res.status(200).json({authenticated: false, username: null});
