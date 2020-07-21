@@ -1,10 +1,6 @@
 import * as express from 'express';
 import {Application} from "express";
-import {signinUser} from './signin.route';
-import {signedinUser} from './signedin.route';
-import {signoutUser} from './signout.route';
-import {signupUser} from './signup.route';
-import {availableUser} from './username.route';
+import {signinUser, signedinUser, signoutUser, signupUser, availableUser} from './routes';
 
 const cors = require('cors');
 const bodyParser = require('body-parser');
