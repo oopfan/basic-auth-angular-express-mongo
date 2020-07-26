@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { BehaviorSubject, of, Observable, throwError, iif } from 'rxjs';
+import { tap, pluck, concatMap, catchError } from 'rxjs/operators';
+import { LocalStorageService } from 'angular-web-storage';
 
 interface SignupCredentials {
   username: string;
@@ -12,10 +13,6 @@ interface SignupCredentials {
 interface SigninCredentials {
   username: string;
   password: string;
-}
-
-interface SignupResponse {
-  username: string;
 }
 
 interface SignedinResponse {
@@ -33,31 +30,99 @@ export interface AuthStatus {
 })
 export class AuthService {
   rootUrl = 'http://localhost:9000/api';
-  authStatus$ = new BehaviorSubject<AuthStatus>({ signedIn: false, username: undefined });
+  authStatus$ = new BehaviorSubject<AuthStatus>({ signedIn: false, username: '' });
+  private accessToken: string = null;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, private storage: LocalStorageService) {}
 
   usernameAvailable(username: string) {
     return this.http.post<{ available: boolean }>(this.rootUrl + '/auth/username', { username });
   }
 
   signup(credentials: SignupCredentials) {
-    return this.http.post<SignupResponse>(this.rootUrl + '/auth/signup', credentials, { withCredentials: true })
-      .pipe(tap((value) => { this.authStatus$.next({ signedIn: true, username: value.username }); }));
-  }
-
-  checkAuth() {
-    return this.http.get<SignedinResponse>(this.rootUrl + '/auth/signedin', { withCredentials: true })
-      .pipe(tap((value) => { this.authStatus$.next({ signedIn: value.authenticated, username: value.username }); }));
-  }
-
-  signout() {
-    return this.http.post<any>(this.rootUrl + '/auth/signout', {}, { withCredentials: true })
-      .pipe(tap(() => { this.authStatus$.next({ signedIn: false, username: undefined }); }));
+    return this.http.post<{ _t: string}>(this.rootUrl + '/auth/signup', credentials).pipe(
+      pluck('_t'),
+      tap(value => {
+        this.storage.set('_t', value);
+        this.authStatus$.next({ signedIn: true, username: credentials.username });
+      })
+    );
   }
 
   signin(credentials: SigninCredentials) {
-    return this.http.post<SigninCredentials>(this.rootUrl + '/auth/signin', credentials, { withCredentials: true })
-      .pipe(tap((value) => { this.authStatus$.next({ signedIn: true, username: value.username }); }));
+    return this.http.post<{ _t: string}>(this.rootUrl + '/auth/signin', credentials).pipe(
+      pluck('_t'),
+      tap(value => {
+        this.storage.set('_t', value);
+        this.authStatus$.next({ signedIn: true, username: credentials.username });
+      })
+    );
   }
+
+  signout() {
+    return this._protect(this._signout).pipe(
+      catchError(() => {
+        const value = { authenticated: false, username: '' };
+        return of(value);
+      }),
+      tap(value => {
+        this.authStatus$.next({ signedIn: value.authenticated, username: value.username });
+        this.accessToken = null;
+        this.storage.remove('_t');
+      })
+    );
+  }
+
+  checkAuth() {
+    return this._protect(this._signedin).pipe(
+      catchError(() => {
+        const value = { authenticated: false, username: '' };
+        return of(value);
+      }),
+      tap(value => {
+        this.authStatus$.next({ signedIn: value.authenticated, username: value.username });
+      })
+    );
+  }
+
+  private _signedin = (accessToken: string): Observable<any> => {
+    const headers = new HttpHeaders()
+      .set('Content-Type', 'application/json')
+      .set('Authorization', 'Bearer ' + accessToken);
+    return this.http.post<SignedinResponse>(this.rootUrl + '/auth/signedin', {}, { headers });
+  }
+
+  private _signout = (accessToken: string) => {
+    const headers = new HttpHeaders()
+      .set('Content-Type', 'application/json')
+      .set('Authorization', 'Bearer ' + accessToken);
+    return this.http.post<any>(this.rootUrl + '/auth/signout', {}, { headers });
+  }
+
+  private _protect(resource: {(accessToken: string): Observable<any>}) : Observable<any> {
+    const accessToken = this.accessToken;
+    const refreshToken: string = this.storage.get('_t');
+
+    const path1$ = iif(
+      () => accessToken != null,
+      of(accessToken).pipe(concatMap(resource)),
+      throwError({error: {message: 'Access Token is null'}})
+    );
+  
+    const path2$ = iif(
+      () => refreshToken != null,
+      this._createAccessToken(refreshToken).pipe(pluck('_t'), tap(value => { this.accessToken = value; }), concatMap(resource)),
+      throwError({error: {message: 'Refresh Token is null'}})
+    );
+
+    return path1$.pipe(catchError(() => path2$));
+  }
+
+  private _createAccessToken(refreshToken: string) {
+    const headers = new HttpHeaders()
+      .set('Content-Type', 'application/json')
+      .set('Authorization', 'Bearer ' + refreshToken);
+    return this.http.post<{ _t: string}>(this.rootUrl + '/auth/access', {}, { headers });
+  }
+
 }

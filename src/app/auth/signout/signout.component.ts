@@ -1,19 +1,29 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-signout',
   templateUrl: './signout.component.html',
   styleUrls: ['./signout.component.css']
 })
-export class SignoutComponent implements OnInit {
+export class SignoutComponent implements OnInit, OnDestroy {
+  subscription: Subscription;
 
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService, private router: Router) { }
 
   ngOnInit(): void {
-    this.authService.signout().subscribe(() => {
-      
-    })
+    this.subscription = this.authService.signout().subscribe(() => {});
+    setTimeout(() => {
+      this.router.navigate([ '/home' ]);
+    }, 1000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+    }
   }
 
 }

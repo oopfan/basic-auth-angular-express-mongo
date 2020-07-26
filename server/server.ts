@@ -1,38 +1,27 @@
 import * as express from 'express';
-import {Application} from "express";
-import {signinUser, signedinUser, signoutUser, signupUser, availableUser} from './routes';
-
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const session = require('express-session');
+import * as cors from 'cors';
+import { authSignup, authSignin, authSignout, authChgpwd, checkToken, authAccess, authUsername, authSignedin } from './routes';
 
 const corsOptions = {
     origin: 'http://localhost:4200',
     credentials: true
 };
 
-const sessionOptions = {
-    secret: 'ZLv3Lykqci5nGod(jix@lWCtB0GxGsumtG4K(y#c2)fBKHT7tk',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        sameSite: 'lax',    // Override to satisfy Firefox
-        httpOnly: false,    // The default is true
-        maxAge: 2592000000  // 30 days
-    }
-};
+const app = express();
+const port = 9000;
 
-const app: Application = express();
-app.use(session(sessionOptions));
 app.use(cors(corsOptions));
-app.use(bodyParser.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
-app.route('/api/auth/signin').post(signinUser);
-app.route('/api/auth/signedin').get(signedinUser);
-app.route('/api/auth/signout').post(signoutUser);
-app.route('/api/auth/signup').post(signupUser);
-app.route('/api/auth/username').post(availableUser);
+app.route('/api/auth/access').post(checkToken, authAccess);
+app.route('/api/auth/username').post(authUsername);
+app.route('/api/auth/signup').post(authSignup);
+app.route('/api/auth/signin').post(authSignin);
+app.route('/api/auth/signout').post(checkToken, authSignout);
+app.route('/api/auth/signedin').post(checkToken, authSignedin);
+app.route('/api/auth/chgpwd').post(checkToken, authChgpwd);
 
-const httpServer = app.listen(9000, () => {
+const httpServer = app.listen(port, () => {
     console.log("HTTP REST API Server running at http://localhost:" + httpServer.address()["port"]);
 });
