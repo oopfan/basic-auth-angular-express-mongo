@@ -14,10 +14,13 @@ export class SignoutComponent implements OnInit, OnDestroy {
   constructor(private authService: AuthService, private router: Router) { }
 
   ngOnInit(): void {
-    this.subscription = this.authService.signout().subscribe(() => {});
     setTimeout(() => {
-      this.router.navigate([ '/home' ]);
-    }, 1000);
+      this.subscription = this.authService.signout().subscribe(() => {
+        setTimeout(() => {
+          this.router.navigate([ '/home' ]);
+        }, 0);
+      });
+    }, 0);
   }
 
   ngOnDestroy(): void {
