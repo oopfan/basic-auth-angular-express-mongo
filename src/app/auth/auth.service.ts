@@ -39,6 +39,10 @@ export class AuthService {
     return this.http.post<{ available: boolean }>(this.rootUrl + '/auth/username', { username });
   }
 
+  emailAvailable(email: string) {
+    return this.http.post<{ available: boolean }>(this.rootUrl + '/auth/email', { email });
+  }
+
   signup(credentials: SignupCredentials) {
     return this.http.post<{ _t: string}>(this.rootUrl + '/auth/signup', credentials).pipe(
       pluck('_t'),

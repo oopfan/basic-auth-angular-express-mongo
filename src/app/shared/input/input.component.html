@@ -24,5 +24,11 @@
         <div class="help is-danger" *ngIf="control.errors.noConnection">
             Can't tell if username is taken
         </div>
+        <div class="help is-danger" *ngIf="control.errors.email">
+            Invalid email address
+        </div>
+        <div class="help is-danger" *ngIf="control.errors.nonUniqueEmail">
+            Email address is taken
+        </div>
     </ng-container>
 </div>

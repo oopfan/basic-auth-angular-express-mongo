@@ -1,6 +1,6 @@
 import * as express from 'express';
 import * as cors from 'cors';
-import { authSignup, authSignin, authSignout, authChgpwd, checkToken, authAccess, authUsername, authSignedin } from './routes';
+import { authSignup, authSignin, authSignout, authChgpwd, checkToken, authAccess, authUsername, authEmail, authSignedin } from './routes';
 
 const corsOptions = {
     origin: 'http://localhost:4200',
@@ -16,6 +16,7 @@ app.use(express.json());
 
 app.route('/api/auth/access').post(checkToken, authAccess);
 app.route('/api/auth/username').post(authUsername);
+app.route('/api/auth/email').post(authEmail);
 app.route('/api/auth/signup').post(authSignup);
 app.route('/api/auth/signin').post(authSignin);
 app.route('/api/auth/signout').post(checkToken, authSignout);

@@ -3,6 +3,7 @@
     <div class="column is-three-fifths">
         <form [formGroup]="authForm" (ngSubmit)="onSubmit()">
             <app-input input-type="text" label="Username" [control]="authForm.get('username')"></app-input>
+            <app-input input-type="email" label="Email" [control]="authForm.get('email')"></app-input>
             <app-input input-type="password" label="Password" [control]="authForm.get('password')"></app-input>
             <app-input input-type="password" label="Password Confirmation" [control]="authForm.get('passwordConfirmation')"></app-input>
             <div *ngIf="authForm.get('password').touched && authForm.get('passwordConfirmation').touched && authForm.errors">

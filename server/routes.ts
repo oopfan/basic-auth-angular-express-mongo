@@ -9,6 +9,7 @@ const ACCESS_TOKEN_EXP = '10m';
 const REFRESH_TOKEN_EXP = '30d';
 // This secret key needs to go into an environment variable:
 const TOKEN_KEY = '#jpEh1@0d9QQMO2IAteiDHE7h*9@5aUdz9KJJDs&66SttWLCG4';
+const ADMIN_EMAIL = 'oopfan@optonline.net';
 
 const logError = (message: string) => {
     console.error(message);
@@ -45,9 +46,14 @@ const usernameNotFoundPasswordInvalid = (res: Response) => {
     return res.status(422).json({username: 'Username not found', password: 'Invalid password'});
 }
 
+const emailInUse = (res: Response) => {
+    logError('Email in use');
+    return res.status(422).json({email: 'Email in use'});
+}
+
 const usernameFoundPasswordInvalid = (res: Response) => {
-    logError('Username already exists and/or invalid password');
-    return res.status(422).json({username: 'Username already exists', password: 'Invalid password'});
+    logError('Username or email already exists or invalid password');
+    return res.status(422).json({username: 'Username or email already exists', password: 'Invalid password'});
 }
 
 const errorAccessingUserDatabase = (res: Response) => {
@@ -94,12 +100,14 @@ mongoose.connect(MONGO_CONNECT, {
 
 interface IUser extends mongoose.Document {
     username: string,
+    email: string,
     password: string,
     role: string
 }
 
 const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     role: { type: String, required: true }
 });
@@ -160,21 +168,42 @@ export async function authUsername(req: Request, res: Response) {
     res.status(200).json({available: true});
 }
 
+export async function authEmail(req: Request, res: Response) {
+    const { body } = req;
+    const { email } = body;
+
+    let [err, user] = await handle(UserModel.findOne({ email }));
+    if (err) return errorAccessingUserDatabase(res);
+
+    if (user) return emailInUse(res);
+    res.status(200).json({available: true});
+}
+
 export async function authSignup(req: Request, res: Response) {
     const { body } = req;
     const { username } = body;
+    let { email } = body;
     const { password } = body;
     const { passwordConfirmation } = body;
 
-    let [err, user] = await handle(UserModel.findOne({ username }));
+    if (username === undefined || email === undefined || password === undefined || passwordConfirmation === undefined) return usernameFoundPasswordInvalid(res);
+    email = body.email.toLowerCase();
+    
+    // Check if email already in use:
+    let [err, user] = await handle(UserModel.findOne({ email }));
     if (err) return errorAccessingUserDatabase(res);
+    if (user) return usernameFoundPasswordInvalid(res);
 
+    // Check that username does not exist:
+    [err, user] = await handle(UserModel.findOne({ username }));
+    if (err) return errorAccessingUserDatabase(res);
     if (user || password != passwordConfirmation) return usernameFoundPasswordInvalid(res);
 
     const newUser = new UserModel({
         username,
+        email,
         password,
-        role: 'guest'
+        role: roleFromEmail(email)
     });
 
     [err, user] = await handle(newUser.save());
@@ -298,4 +327,8 @@ export function checkToken(req: Request, res: Response, next: NextFunction) {
     }
     else
         protectedResource(res);
+}
+
+function roleFromEmail(email: string): string {
+    return (email === ADMIN_EMAIL) ? 'Admin' : 'Guest';
 }
