@@ -29,22 +29,22 @@ export interface AuthStatus {
   providedIn: 'root'
 })
 export class AuthService {
-  rootUrl = 'http://localhost:9000/api';
+  private API_URL = 'http://localhost:9000/api/';  // Development
   authStatus$ = new BehaviorSubject<AuthStatus>({ signedIn: false, username: '' });
   private accessToken: string = null;
 
   constructor(private http: HttpClient, private storage: LocalStorageService) {}
 
   usernameAvailable(username: string) {
-    return this.http.post<{ available: boolean }>(this.rootUrl + '/auth/username', { username });
+    return this.http.post<{ available: boolean }>(this.API_URL + 'auth/username', { username });
   }
 
   emailAvailable(email: string) {
-    return this.http.post<{ available: boolean }>(this.rootUrl + '/auth/email', { email });
+    return this.http.post<{ available: boolean }>(this.API_URL + 'auth/email', { email });
   }
 
   signup(credentials: SignupCredentials) {
-    return this.http.post<{ _t: string}>(this.rootUrl + '/auth/signup', credentials).pipe(
+    return this.http.post<{ _t: string}>(this.API_URL + 'auth/signup', credentials).pipe(
       pluck('_t'),
       tap(value => {
         this.storage.set('_t', value);
@@ -54,7 +54,7 @@ export class AuthService {
   }
 
   signin(credentials: SigninCredentials) {
-    return this.http.post<{ _t: string}>(this.rootUrl + '/auth/signin', credentials).pipe(
+    return this.http.post<{ _t: string}>(this.API_URL + 'auth/signin', credentials).pipe(
       pluck('_t'),
       tap(value => {
         this.storage.set('_t', value);
@@ -93,14 +93,14 @@ export class AuthService {
     const headers = new HttpHeaders()
       .set('Content-Type', 'application/json')
       .set('Authorization', 'Bearer ' + accessToken);
-    return this.http.post<SignedinResponse>(this.rootUrl + '/auth/signedin', {}, { headers });
+    return this.http.post<SignedinResponse>(this.API_URL + 'auth/signedin', {}, { headers });
   }
 
   private _signout = (accessToken: string) => {
     const headers = new HttpHeaders()
       .set('Content-Type', 'application/json')
       .set('Authorization', 'Bearer ' + accessToken);
-    return this.http.post<any>(this.rootUrl + '/auth/signout', {}, { headers });
+    return this.http.post<any>(this.API_URL + 'auth/signout', {}, { headers });
   }
 
   private _protect(resource: {(accessToken: string): Observable<any>}) : Observable<any> {
@@ -126,7 +126,7 @@ export class AuthService {
     const headers = new HttpHeaders()
       .set('Content-Type', 'application/json')
       .set('Authorization', 'Bearer ' + refreshToken);
-    return this.http.post<{ _t: string}>(this.rootUrl + '/auth/access', {}, { headers });
+    return this.http.post<{ _t: string}>(this.API_URL + 'auth/access', {}, { headers });
   }
 
 }

@@ -1,34 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
 import * as mongoose from 'mongoose';
 import * as jwt from 'jsonwebtoken';
-const MONGO_CONNECT = 'mongodb://localhost:27017/userdata';
-const APP_NAME = 'basic-auth-angular-express-mongo';
-const ACCESS_TOKEN_SUB = 'access';
-const REFRESH_TOKEN_SUB = 'refresh';
-const ACCESS_TOKEN_EXP = '10m';
-const REFRESH_TOKEN_EXP = '30d';
-// This secret key needs to go into an environment variable:
-const TOKEN_KEY = '#jpEh1@0d9QQMO2IAteiDHE7h*9@5aUdz9KJJDs&66SttWLCG4';
-const ADMIN_EMAIL = 'oopfan@optonline.net';
 
 const logError = (message: string) => {
     console.error(message);
 }
 
 const signAccessToken = (payload: any) => {
-    return jwt.sign(payload, TOKEN_KEY, { issuer: APP_NAME, subject: ACCESS_TOKEN_SUB, expiresIn: ACCESS_TOKEN_EXP })    
+    return jwt.sign(payload, process.env.TOKEN_KEY, { issuer: process.env.TOKEN_ISSUER, subject: process.env.TOKEN_SUBJECT_ACCESS, expiresIn: process.env.TOKEN_EXPIRATION_ACCESS })    
 }
 
 const signRefreshToken = (payload: any) => {
-    return jwt.sign(payload, TOKEN_KEY, { issuer: APP_NAME, subject: REFRESH_TOKEN_SUB, expiresIn: REFRESH_TOKEN_EXP })    
+    return jwt.sign(payload, process.env.TOKEN_KEY, { issuer: process.env.TOKEN_ISSUER, subject: process.env.TOKEN_SUBJECT_REFRESH, expiresIn: process.env.TOKEN_EXPIRATION_REFRESH })    
 }
 
 const verifyAccessToken = (token: string) => {
-    return jwt.verify(token, TOKEN_KEY, { issuer: APP_NAME, subject: ACCESS_TOKEN_SUB });
+    return jwt.verify(token, process.env.TOKEN_KEY, { issuer: process.env.TOKEN_ISSUER, subject: process.env.TOKEN_SUBJECT_ACCESS });
 }
 
 const verifyRefreshToken = (token: string) => {
-    return jwt.verify(token, TOKEN_KEY, { issuer: APP_NAME, subject: REFRESH_TOKEN_SUB });
+    return jwt.verify(token, process.env.TOKEN_KEY, { issuer: process.env.TOKEN_ISSUER, subject: process.env.TOKEN_SUBJECT_REFRESH });
 }
 
 const protectedResource = (res: Response) => {
@@ -92,7 +83,7 @@ const cannotChangePasswordForAnotherUser = (res: Response) => {
     return res.status(422).json({ message });
 }
 
-mongoose.connect(MONGO_CONNECT, {
+mongoose.connect(process.env.MONGO_CONNECT, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     useCreateIndex: true
@@ -330,5 +321,5 @@ export function checkToken(req: Request, res: Response, next: NextFunction) {
 }
 
 function roleFromEmail(email: string): string {
-    return (email === ADMIN_EMAIL) ? 'Admin' : 'Guest';
+    return (email === process.env.ADMIN_EMAIL) ? 'Admin' : 'Guest';
 }
