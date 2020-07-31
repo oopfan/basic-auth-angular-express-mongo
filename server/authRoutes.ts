@@ -1,25 +1,43 @@
 import { Request, Response, NextFunction } from 'express';
+import * as fs from 'fs';
 import * as mongoose from 'mongoose';
 import * as jwt from 'jsonwebtoken';
+import * as _ from 'underscore';
+import * as nodemailer from 'nodemailer';
+import * as smtpTransport from 'nodemailer-smtp-transport';
 
 const logError = (message: string) => {
     console.error(message);
 }
 
+const signEmailToken = (payload: any) => {
+    return jwt.sign(payload, process.env.EMAIL_SECRET, { issuer: process.env.TOKEN_ISSUER, subject: process.env.TOKEN_SUBJECT_EMAIL, expiresIn: process.env.TOKEN_EXPIRATION_EMAIL })
+}
+
 const signAccessToken = (payload: any) => {
-    return jwt.sign(payload, process.env.TOKEN_KEY, { issuer: process.env.TOKEN_ISSUER, subject: process.env.TOKEN_SUBJECT_ACCESS, expiresIn: process.env.TOKEN_EXPIRATION_ACCESS })    
+    return jwt.sign(payload, process.env.AUTH_SECRET, { issuer: process.env.TOKEN_ISSUER, subject: process.env.TOKEN_SUBJECT_ACCESS, expiresIn: process.env.TOKEN_EXPIRATION_ACCESS })
 }
 
 const signRefreshToken = (payload: any) => {
-    return jwt.sign(payload, process.env.TOKEN_KEY, { issuer: process.env.TOKEN_ISSUER, subject: process.env.TOKEN_SUBJECT_REFRESH, expiresIn: process.env.TOKEN_EXPIRATION_REFRESH })    
+    return jwt.sign(payload, process.env.AUTH_SECRET, { issuer: process.env.TOKEN_ISSUER, subject: process.env.TOKEN_SUBJECT_REFRESH, expiresIn: process.env.TOKEN_EXPIRATION_REFRESH })
+}
+
+const verifyEmailToken = (token: string) => {
+    return jwt.verify(token, process.env.EMAIL_SECRET, { issuer: process.env.TOKEN_ISSUER, subject: process.env.TOKEN_SUBJECT_EMAIL });
 }
 
 const verifyAccessToken = (token: string) => {
-    return jwt.verify(token, process.env.TOKEN_KEY, { issuer: process.env.TOKEN_ISSUER, subject: process.env.TOKEN_SUBJECT_ACCESS });
+    return jwt.verify(token, process.env.AUTH_SECRET, { issuer: process.env.TOKEN_ISSUER, subject: process.env.TOKEN_SUBJECT_ACCESS });
 }
 
 const verifyRefreshToken = (token: string) => {
-    return jwt.verify(token, process.env.TOKEN_KEY, { issuer: process.env.TOKEN_ISSUER, subject: process.env.TOKEN_SUBJECT_REFRESH });
+    return jwt.verify(token, process.env.AUTH_SECRET, { issuer: process.env.TOKEN_ISSUER, subject: process.env.TOKEN_SUBJECT_REFRESH });
+}
+
+const unableToVerifyEmail = (res: Response) => {
+    const message = 'Authentication failed, unable to verify email';
+    logError (message);
+    return res.status(422).json({ message });
 }
 
 const protectedResource = (res: Response) => {
@@ -93,14 +111,18 @@ interface IUser extends mongoose.Document {
     username: string,
     email: string,
     password: string,
-    role: string
+    role: string,
+    active: boolean,
+    memberSince: number
 }
 
 const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    role: { type: String, required: true }
+    role: { type: String, required: true },
+    active: { type: Boolean, required: true },
+    memberSince: { type: Number, required: true }
 });
 
 const UserModel = mongoose.model<IUser>('User', UserSchema);
@@ -194,27 +216,35 @@ export async function authSignup(req: Request, res: Response) {
         username,
         email,
         password,
-        role: roleFromEmail(email)
+        role: roleFromEmail(email),
+        active: false,
+        memberSince: Date.now()
     });
 
     [err, user] = await handle(newUser.save());
     if (err) return errorAccessingUserDatabase(res);
 
-    const payload = {
-        username: user.username,
-        role: user.role,
-        ip: req.ip
-    }
-
-    let token: string;
+    const emailPayload = {
+        email
+    };
+    let emailToken: string;
     try {
-        token = signRefreshToken(payload);
+        emailToken = signEmailToken(emailPayload);
     }
     catch(err) {
         return errorCreatingToken(res);
     }
 
-    res.status(200).json({ _t: token });
+    const html = getEmailVerificationHtml(emailToken);
+    var mailOptions = {
+        from: process.env.ADMIN_EMAIL,
+        to: email,
+        subject: 'New Account Verification',
+        html: html
+    };
+    smtpSendMail(mailOptions);
+
+    res.status(200).json({ message: 'Awaiting Verification' });
 }
 
 export async function authSignin(req: Request, res: Response) {
@@ -323,3 +353,86 @@ export function checkToken(req: Request, res: Response, next: NextFunction) {
 function roleFromEmail(email: string): string {
     return (email === process.env.ADMIN_EMAIL) ? 'Admin' : 'Guest';
 }
+
+function getEmailVerificationHtml(token: string) {
+    const html = fs.readFileSync(__dirname + '/emailVerification.html', {encoding: 'utf8'});
+    const settings: _.TemplateSettings = { interpolate: /\{\{(.+?)\}\}/g };
+    const template = _.template(html, settings);
+
+    const model = {
+        verifyUrl: process.env.APP_URL + '/api/auth/verify-email?token=' + encodeURIComponent(token),
+        title: process.env.APP_NAME,
+        subTitle: 'Thanks for signing up!',
+        body: 'Please verify your email address by clicking the button below. If you received this email in error please disregard.'
+    };
+
+    return template(model);
+}
+
+function getEmailNewAccountHtml(email: string) {
+    const html = fs.readFileSync(__dirname + '/emailNewAccount.html', {encoding: 'utf8'});
+    const settings: _.TemplateSettings = { interpolate: /\{\{(.+?)\}\}/g };
+    const template = _.template(html, settings);
+
+    const model = {
+        title: process.env.APP_NAME,
+        subTitle: 'New Account!',
+        body: email
+    };
+
+    return template(model);
+}
+
+export async function authEmailVerification(req: Request, res: Response) {
+    const emailToken = req.query.token.toString();
+
+    let authorizedData: any;
+    try {
+        authorizedData = verifyEmailToken(emailToken);
+    }
+    catch(err) {
+        if (err.name == 'TokenExpiredError') return expiredToken(res);
+        return invalidToken(res);
+    }
+
+    const email = authorizedData.email;
+    if (!email) return unableToVerifyEmail(res);
+
+    let [err, user] = await handle(UserModel.findOne({ email }));
+    if (err) return errorAccessingUserDatabase(res);
+    if (!user) return unableToVerifyEmail(res);
+
+    [err, user] = await handle(user.updateOne({ active: true }));
+    if (err) return errorAccessingUserDatabase(res);
+
+    const html = getEmailNewAccountHtml(email);
+    var mailOptions = {
+        from: process.env.ADMIN_EMAIL,
+        to: process.env.ADMIN_EMAIL,
+        subject: 'New Account',
+        html: html
+    };
+    smtpSendMail(mailOptions);
+
+    res.redirect(process.env.APP_URL);
+}
+
+function smtpSendMail(mailOptions: any) {
+    const smtpConfig = {
+        host: process.env.EMAIL_HOST,
+        port: parseInt(process.env.EMAIL_PORT),
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    };
+    var transporter = nodemailer.createTransport(smtpTransport(smtpConfig));
+    transporter.sendMail(mailOptions, function(err, info) {
+        if (err) {
+            console.log('error sending email to ' + mailOptions.to);
+        }
+        else {
+            console.log('sent email to ' + mailOptions.to + ' (' + info.response + ')');
+        }
+    });
+};

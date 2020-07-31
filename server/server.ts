@@ -3,7 +3,7 @@ dotenv.config();
 
 import * as express from 'express';
 import * as cors from 'cors';
-import { authSignup, authSignin, authSignout, authChgpwd, checkToken, authAccess, authUsername, authEmail, authSignedin } from './routes';
+import { authSignup, authSignin, authSignout, authChgpwd, checkToken, authAccess, authUsername, authEmail, authSignedin, authEmailVerification } from './authRoutes';
 
 const corsOptions = {
     origin: process.env.CORS_ORIGIN,
@@ -25,6 +25,7 @@ app.route('/api/auth/signin').post(authSignin);
 app.route('/api/auth/signout').post(checkToken, authSignout);
 app.route('/api/auth/signedin').post(checkToken, authSignedin);
 app.route('/api/auth/chgpwd').post(checkToken, authChgpwd);
+app.route('/api/auth/verify-email').get(authEmailVerification);
 
 app.listen(port, () => {
     console.log('Express server listening on port ' + port);

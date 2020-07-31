@@ -44,13 +44,7 @@ export class AuthService {
   }
 
   signup(credentials: SignupCredentials) {
-    return this.http.post<{ _t: string}>(this.API_URL + 'auth/signup', credentials).pipe(
-      pluck('_t'),
-      tap(value => {
-        this.storage.set('_t', value);
-        this.authStatus$.next({ signedIn: true, username: credentials.username });
-      })
-    );
+    return this.http.post<{ message: string}>(this.API_URL + 'auth/signup', credentials);
   }
 
   signin(credentials: SigninCredentials) {
