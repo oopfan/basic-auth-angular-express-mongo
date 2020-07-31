@@ -12,7 +12,7 @@ export class AppComponent implements OnInit {
   authStatus$: Observable<AuthStatus>;
 
   constructor(public authService: AuthService) {
-    this.authStatus$ = this.authService.authStatus$;
+    this.authStatus$ = this.authService.authStatus$.asObservable();
   }
 
   ngOnInit(): void {

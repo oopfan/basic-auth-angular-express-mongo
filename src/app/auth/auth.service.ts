@@ -15,14 +15,25 @@ interface SigninCredentials {
   password: string;
 }
 
+interface SigninResponse {
+  refreshToken: string;
+  activated: boolean;
+  username: string;
+  role: string;
+}
+
 interface SignedinResponse {
   authenticated: boolean;
+  activated: boolean;
   username: string;
+  role: string;
 }
 
 export interface AuthStatus {
-  signedIn: boolean;
+  authenticated: boolean;
+  activated: boolean;
   username: string;
+  role: string;
 }
 
 @Injectable({
@@ -30,7 +41,7 @@ export interface AuthStatus {
 })
 export class AuthService {
   private API_URL = 'http://localhost:9000/api/';  // Development
-  authStatus$ = new BehaviorSubject<AuthStatus>({ signedIn: false, username: '' });
+  authStatus$ = new BehaviorSubject<AuthStatus>({ authenticated: false, activated: false, username: '', role: '' });
   private accessToken: string = null;
 
   constructor(private http: HttpClient, private storage: LocalStorageService) {}
@@ -48,11 +59,10 @@ export class AuthService {
   }
 
   signin(credentials: SigninCredentials) {
-    return this.http.post<{ _t: string}>(this.API_URL + 'auth/signin', credentials).pipe(
-      pluck('_t'),
+    return this.http.post<SigninResponse>(this.API_URL + 'auth/signin', credentials).pipe(
       tap(value => {
-        this.storage.set('_t', value);
-        this.authStatus$.next({ signedIn: true, username: credentials.username });
+        this.storage.set('_t', value.refreshToken);
+        this.authStatus$.next({ authenticated: true, activated: value.activated, username: value.username, role: value.role });
       })
     );
   }
@@ -60,11 +70,10 @@ export class AuthService {
   signout() {
     return this._protect(this._signout).pipe(
       catchError(() => {
-        const value = { authenticated: false, username: '' };
-        return of(value);
+        return of({});
       }),
-      tap(value => {
-        this.authStatus$.next({ signedIn: value.authenticated, username: value.username });
+      tap(() => {
+        this.authStatus$.next({ authenticated: false, activated: false, username: '', role: '' });
         this.accessToken = null;
         this.storage.remove('_t');
       })
@@ -72,18 +81,18 @@ export class AuthService {
   }
 
   checkAuth() {
-    return this._protect(this._signedin).pipe(
+    return this._protect<SignedinResponse>(this._signedin).pipe(
       catchError(() => {
-        const value = { authenticated: false, username: '' };
+        const value = { authenticated: false, activated: false, username: '', role: '' };
         return of(value);
       }),
       tap(value => {
-        this.authStatus$.next({ signedIn: value.authenticated, username: value.username });
+        this.authStatus$.next({ authenticated: value.authenticated, activated: value.activated, username: value.username, role: value.role });
       })
     );
   }
 
-  private _signedin = (accessToken: string): Observable<any> => {
+  private _signedin = (accessToken: string): Observable<SignedinResponse> => {
     const headers = new HttpHeaders()
       .set('Content-Type', 'application/json')
       .set('Authorization', 'Bearer ' + accessToken);
@@ -97,7 +106,7 @@ export class AuthService {
     return this.http.post<any>(this.API_URL + 'auth/signout', {}, { headers });
   }
 
-  private _protect(resource: {(accessToken: string): Observable<any>}) : Observable<any> {
+  private _protect<T>(resource: {(accessToken: string): Observable<T>}) : Observable<T> {
     const accessToken = this.accessToken;
     const refreshToken: string = this.storage.get('_t');
 

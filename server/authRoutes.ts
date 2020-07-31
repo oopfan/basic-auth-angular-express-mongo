@@ -112,7 +112,7 @@ interface IUser extends mongoose.Document {
     email: string,
     password: string,
     role: string,
-    active: boolean,
+    activated: boolean,
     memberSince: number
 }
 
@@ -121,7 +121,7 @@ const UserSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     role: { type: String, required: true },
-    active: { type: Boolean, required: true },
+    activated: { type: Boolean, required: true },
     memberSince: { type: Number, required: true }
 });
 
@@ -217,7 +217,7 @@ export async function authSignup(req: Request, res: Response) {
         email,
         password,
         role: roleFromEmail(email),
-        active: false,
+        activated: false,
         memberSince: Date.now()
     });
 
@@ -273,7 +273,7 @@ export async function authSignin(req: Request, res: Response) {
         return errorCreatingToken(res);
     }
 
-    res.status(200).json({ _t: token });
+    res.status(200).json({ refreshToken: token, activated: user.activated, username: user.username, role: user.role });
 }
 
 export function authSignout(req: Request, res: Response) {
@@ -291,10 +291,10 @@ export function authSignout(req: Request, res: Response) {
 
     if (authorizedData.ip != req.ip) return invalidIPAddress(res);
 
-    res.status(200).json({ authenticated: false, username: '' });
+    res.status(200).json({ authenticated: false, activated: false, username: '', role: '' });
 }
 
-export function authSignedin(req: Request, res: Response) {
+export async function authSignedin(req: Request, res: Response) {
     const accessToken = req['token'];
 
     let authorizedData: any;
@@ -302,10 +302,18 @@ export function authSignedin(req: Request, res: Response) {
         authorizedData = verifyAccessToken(accessToken);
     }
     catch(err) {
-        return res.status(200).json({ authenticated: false, username: '' });
+        if (err.name == 'TokenExpiredError') return expiredToken(res);
+        return invalidToken(res);
     }
 
-    res.status(200).json({ authenticated: true, username: authorizedData.username });
+    let [err, user] = await handle(UserModel.findOne({ username: authorizedData.username }));
+    if (err) return errorAccessingUserDatabase(res);
+
+    if (!user) {
+        return usernameNotFoundPasswordInvalid(res);
+    }
+
+    res.status(200).json({ authenticated: true, activated: user.activated, username: user.username, role: user.role });
 }
 
 export async function authChgpwd(req: Request, res: Response) {
@@ -402,17 +410,19 @@ export async function authEmailVerification(req: Request, res: Response) {
     if (err) return errorAccessingUserDatabase(res);
     if (!user) return unableToVerifyEmail(res);
 
-    [err, user] = await handle(user.updateOne({ active: true }));
-    if (err) return errorAccessingUserDatabase(res);
-
-    const html = getEmailNewAccountHtml(email);
-    var mailOptions = {
-        from: process.env.ADMIN_EMAIL,
-        to: process.env.ADMIN_EMAIL,
-        subject: 'New Account',
-        html: html
-    };
-    smtpSendMail(mailOptions);
+    if (!user.activated) {
+        [err, user] = await handle(user.updateOne({ activated: true }));
+        if (err) return errorAccessingUserDatabase(res);
+    
+        const html = getEmailNewAccountHtml(email);
+        var mailOptions = {
+            from: process.env.ADMIN_EMAIL,
+            to: process.env.ADMIN_EMAIL,
+            subject: 'New Account',
+            html: html
+        };
+        smtpSendMail(mailOptions);
+    }
 
     res.redirect(process.env.APP_URL);
 }
