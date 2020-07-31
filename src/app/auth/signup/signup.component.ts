@@ -53,7 +53,7 @@ export class SignupComponent implements OnInit {
     this.authService.signup(this.authForm.value).subscribe({
       // Arrow functions used so that we can gain access to 'this':
       next: response => {
-        this.router.navigateByUrl('/home');
+        this.router.navigateByUrl('/welcome/1');
       },
       error: err => {
         if (!err.status) {

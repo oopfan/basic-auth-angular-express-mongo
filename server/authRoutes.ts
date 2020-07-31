@@ -422,6 +422,7 @@ export async function authEmailVerification(req: Request, res: Response) {
             html: html
         };
         smtpSendMail(mailOptions);
+        return res.redirect(process.env.APP_URL + '/welcome/2');
     }
 
     res.redirect(process.env.APP_URL);

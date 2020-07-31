@@ -6,11 +6,12 @@ import { HttpClientModule } from '@angular/common/http';
 import { AuthRoutingModule } from './auth-routing.module';
 import { SigninComponent } from './signin/signin.component';
 import { SignupComponent } from './signup/signup.component';
-import { SharedModule } from '../shared/shared.module';
 import { SignoutComponent } from './signout/signout.component'
+import { WelcomeComponent } from './welcome/welcome.component';
+import { SharedModule } from '../shared/shared.module';
 
 @NgModule({
-  declarations: [SigninComponent, SignupComponent, SignoutComponent],
+  declarations: [SigninComponent, SignupComponent, SignoutComponent, WelcomeComponent],
   imports: [
     CommonModule,
     ReactiveFormsModule,
