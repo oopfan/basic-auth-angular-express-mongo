@@ -1,9 +1,17 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
+import * as mongoose from 'mongoose';
 import * as express from 'express';
 import * as cors from 'cors';
-import { authSignup, authSignin, authSignout, authChgpwd, checkToken, authAccess, authUsername, authEmail, authSignedin, authEmailVerification } from './authRoutes';
+import { authSignup, authSignin, authSignout, authChgpwd, checkToken, authAccess, authUsername, authEmail, authSignedin } from './authRoutes';
+import * as emailVerification from './emailVerification/emailVerification';
+
+mongoose.connect(process.env.MONGO_CONNECT, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    useCreateIndex: true
+});
 
 const corsOptions = {
     origin: process.env.CORS_ORIGIN,
@@ -25,7 +33,7 @@ app.route('/api/auth/signin').post(authSignin);
 app.route('/api/auth/signout').post(checkToken, authSignout);
 app.route('/api/auth/signedin').post(checkToken, authSignedin);
 app.route('/api/auth/chgpwd').post(checkToken, authChgpwd);
-app.route('/api/auth/verify-email').get(authEmailVerification);
+app.route('/api/auth/verify-email').get(emailVerification.handler);
 
 app.listen(port, () => {
     console.log('Express server listening on port ' + port);
