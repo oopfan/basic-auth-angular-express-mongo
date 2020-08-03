@@ -1,6 +1,5 @@
 import { Response } from 'express';
 
-export const ErrorProtectedResource = 'ErrorProtectedResource';
 export const ErrorUsernameInUse = 'ErrorUsernameInUse';
 export const ErrorUsernameNotFoundPasswordInvalid = 'ErrorUsernameNotFoundPasswordInvalid';
 export const ErrorEmailInUse = 'ErrorEmailInUse';
@@ -17,8 +16,6 @@ export const ErrorSendingEmail = 'ErrorSendingEmail';
 export function sendResponse(res: Response, errorCode: string) {
     console.error(errorCode);
     switch (errorCode) {
-        case ErrorProtectedResource:
-            return res.status(403).json({ message: 'Protected resource' });
         case ErrorUsernameInUse:
             return res.status(422).json({ username: 'Username in use' });
         case ErrorUsernameNotFoundPasswordInvalid:
