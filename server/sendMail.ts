@@ -10,13 +10,6 @@ export function sendMail(mailOptions: any) {
             pass: process.env.EMAIL_PASS
         }
     };
-    var transporter = nodemailer.createTransport(smtpTransport(smtpConfig));
-    transporter.sendMail(mailOptions, function(err, info) {
-        if (err) {
-            console.log('error sending email to ' + mailOptions.to);
-        }
-        else {
-            console.log('sent email to ' + mailOptions.to + ' (' + info.response + ')');
-        }
-    });
+    const transporter = nodemailer.createTransport(smtpTransport(smtpConfig));
+    return transporter.sendMail(mailOptions);   // returns a promise
 }

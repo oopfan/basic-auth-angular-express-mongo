@@ -4,16 +4,6 @@ import * as emailVerification from './emailVerification/emailVerification';
 import * as error from './errors';
 import { UserModel } from './userModel';
 
-const signEmailToken = (payload: any) => {
-    return jwt.sign(payload, process.env.EMAIL_SECRET,
-        {
-            issuer: process.env.TOKEN_ISSUER,
-            subject: process.env.TOKEN_SUBJECT_EMAIL,
-            expiresIn: process.env.TOKEN_EXPIRATION_EMAIL
-        }
-    );
-}
-
 const signAccessToken = (payload: any) => {
     return jwt.sign(payload, process.env.AUTH_SECRET,
         {
@@ -118,6 +108,7 @@ export async function authEmail(req: Request, res: Response) {
 }
 
 export async function authSignup(req: Request, res: Response) {
+    console.log('authSignup');
     const { body } = req;
     const { username } = body;
     let { email } = body;
@@ -139,6 +130,14 @@ export async function authSignup(req: Request, res: Response) {
     if (err) return error.sendResponse(res, error.ErrorAccessingUserDatabase);
     if (user || password != passwordConfirmation) return error.sendResponse(res, error.ErrorUsernameFoundPasswordInvalid);
 
+    try {
+        await emailVerification.send(email);
+    }
+    catch(e) {
+        if (e.message === error.ErrorCreatingToken) return error.sendResponse(res, error.ErrorCreatingToken);
+        return error.sendResponse(res, error.ErrorSendingEmail);
+    }
+
     const newUser = new UserModel({
         username,
         email,
@@ -151,18 +150,6 @@ export async function authSignup(req: Request, res: Response) {
     [err, user] = await handle(newUser.save());
     if (err) return error.sendResponse(res, error.ErrorAccessingUserDatabase);
 
-    const emailPayload = {
-        email
-    };
-    let emailToken: string;
-    try {
-        emailToken = signEmailToken(emailPayload);
-    }
-    catch(err) {
-        return error.sendResponse(res, error.ErrorCreatingToken);
-    }
-
-    emailVerification.send(email, emailToken);
     res.status(200).json({ message: 'Awaiting Verification' });
 }
 

@@ -10,7 +10,7 @@ export function send(emailAddress: string) {
         subject: 'New Account',
         html: html
     };
-    sendMail(mailOptions);
+    return sendMail(mailOptions);   // returns a promise
 }
 
 function getHtml(emailAddress: string) {

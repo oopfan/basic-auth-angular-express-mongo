@@ -7,6 +7,16 @@ import { sendMail } from '../sendMail';
 import * as error from '../errors';
 import { UserModel } from '../userModel';
 
+const signEmailToken = (payload: any) => {
+    return jwt.sign(payload, process.env.EMAIL_SECRET,
+        {
+            issuer: process.env.TOKEN_ISSUER,
+            subject: process.env.TOKEN_SUBJECT_EMAIL,
+            expiresIn: process.env.TOKEN_EXPIRATION_EMAIL
+        }
+    );
+}
+
 const verifyEmailToken = (token: string) => {
     return jwt.verify(token, process.env.EMAIL_SECRET, { issuer: process.env.TOKEN_ISSUER, subject: process.env.TOKEN_SUBJECT_EMAIL });
 }
@@ -17,17 +27,30 @@ const handle = (promise) => {
         .catch(error => Promise.resolve([error, undefined]));
 }
 
-export function send(emailAddress: string, emailToken: string) {
+export function send(email: string) {
+    let emailToken: string;
+    try {
+        const emailPayload = {
+            email
+        };
+        emailToken = signEmailToken(emailPayload);
+    }
+    catch(err) {
+        throw new Error(error.ErrorCreatingToken);
+    }
+
     const html = getHtml(emailToken);
     var mailOptions = {
         from: process.env.ADMIN_EMAIL,
-        to: emailAddress,
+        to: email,
         subject: 'New Account Verification',
         html: html
     };
-    sendMail(mailOptions);
+    return sendMail(mailOptions);   // returns a promise
 }
 
+// This handler needs to be tested thoroughly on error conditions.
+// Most likely scenario is the user verifies after the 24-hour expiration period.
 export async function handler(req: Request, res: Response) {
     const emailToken = req.query.token.toString();
 
@@ -51,7 +74,9 @@ export async function handler(req: Request, res: Response) {
         [err, user] = await handle(user.updateOne({ activated: true }));
         if (err) return error.sendResponse(res, error.ErrorAccessingUserDatabase);
     
-        emailNewAccount.send(emailAddress);
+        [err, user] = await handle(emailNewAccount.send(emailAddress));
+        if (err) console.log('Error sending New Account creation email to administrator');
+    
         return res.redirect(process.env.APP_URL + '/welcome/2');
     }
 

@@ -12,6 +12,7 @@ export const ErrorExpiredToken = 'ErrorExpiredToken';
 export const ErrorInvalidIPAddress = 'ErrorInvalidIPAddress';
 export const ErrorCannotChangePasswordForAnotherUser = 'ErrorCannotChangePasswordForAnotherUser';
 export const ErrorUnableToVerifyEmail = 'ErrorUnableToVerifyEmail';
+export const ErrorSendingEmail = 'ErrorSendingEmail';
 
 export function sendResponse(res: Response, errorCode: string) {
     console.error(errorCode);
@@ -40,5 +41,7 @@ export function sendResponse(res: Response, errorCode: string) {
             return res.status(422).json({ message: 'Cannot change password for another user' });
         case ErrorUnableToVerifyEmail:
             return res.status(422).json({ message: 'Authentication failed, unable to verify email' });
+        case ErrorSendingEmail:
+            return res.status(400).json({ message: 'Error sending email' });
     }
 }
