@@ -14,7 +14,7 @@ export const ErrorUnableToVerifyEmail = 'ErrorUnableToVerifyEmail';
 export const ErrorSendingEmail = 'ErrorSendingEmail';
 
 export function sendResponse(res: Response, errorCode: string) {
-    console.error(errorCode);
+    // console.error(errorCode);
     switch (errorCode) {
         case ErrorUsernameInUse:
             return res.status(422).json({ username: 'Username in use' });

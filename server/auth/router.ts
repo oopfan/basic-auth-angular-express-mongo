@@ -1,8 +1,19 @@
-import { Request, Response, NextFunction } from 'express';
+import { Router, Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
+import { verifyToken, verifyIP } from '../middleware';
+import { UserModel } from '../users/model';
 import * as emailVerification from './emailVerification/emailVerification';
-import * as error from './errors';
-import { UserModel } from './userModel';
+import * as error from '../errors';
+
+export const router = Router();
+router.post('/username', authUsername);
+router.post('/email', authEmail);
+router.post('/signup', authSignup);
+router.post('/signin', authSignin);
+router.post('/signout', verifyToken, verifyIP, authSignout);
+router.post('/signedin', verifyToken, verifyIP, authSignedin);
+router.post('/chgpwd', verifyToken, verifyIP, authChgpwd);
+router.get('/verify-email', emailVerification.handler);
 
 const signAccessToken = (payload: any) => {
     return jwt.sign(payload, process.env.AUTH_SECRET,
@@ -19,7 +30,11 @@ const handle = (promise) => {
         .catch(error => Promise.resolve([error, undefined]));
 }
 
-export async function authUsername(req: Request, res: Response) {
+function roleFromEmail(email: string): boolean {
+    return email === process.env.ADMIN_EMAIL;
+}
+
+async function authUsername(req: Request, res: Response) {
     const { body } = req;
     const { username } = body;
 
@@ -30,7 +45,7 @@ export async function authUsername(req: Request, res: Response) {
     res.status(200).json({available: true});
 }
 
-export async function authEmail(req: Request, res: Response) {
+async function authEmail(req: Request, res: Response) {
     const { body } = req;
     const { email } = body;
 
@@ -41,8 +56,7 @@ export async function authEmail(req: Request, res: Response) {
     res.status(200).json({available: true});
 }
 
-export async function authSignup(req: Request, res: Response) {
-    console.log('authSignup');
+async function authSignup(req: Request, res: Response) {
     const { body } = req;
     const { username } = body;
     let { email } = body;
@@ -87,7 +101,7 @@ export async function authSignup(req: Request, res: Response) {
     res.status(200).json({ message: 'Awaiting Verification' });
 }
 
-export async function authSignin(req: Request, res: Response) {
+async function authSignin(req: Request, res: Response) {
     const { body } = req;
     const { username } = body;
     const { password } = body;
@@ -116,11 +130,11 @@ export async function authSignin(req: Request, res: Response) {
     res.status(200).json({ accessToken: token, activated: user.activated, username: user.username, isAdmin: user.isAdmin });
 }
 
-export function authSignout(req: Request, res: Response) {
+function authSignout(req: Request, res: Response) {
     res.status(200).json({ authenticated: false, activated: false, username: '', isAdmin: false });
 }
 
-export async function authSignedin(req: Request, res: Response) {
+async function authSignedin(req: Request, res: Response) {
     let authorizedData = req['user'];
 
     let [err, user] = await handle(UserModel.findOne({ username: authorizedData.username }));
@@ -133,7 +147,7 @@ export async function authSignedin(req: Request, res: Response) {
     res.status(200).json({ authenticated: true, activated: user.activated, username: user.username, isAdmin: user.isAdmin });
 }
 
-export async function authChgpwd(req: Request, res: Response) {
+async function authChgpwd(req: Request, res: Response) {
     const { body } = req;
     const { username, password, newPassword, newConfirmation } = body;
 
@@ -151,14 +165,4 @@ export async function authChgpwd(req: Request, res: Response) {
     if (err) return error.sendResponse(res, error.ErrorAccessingUserDatabase);
 
     res.status(200).json({});
-}
-
-export function verifyIP(req: Request, res: Response, next: NextFunction) {
-    const authorizedData = req['user'];
-    if (authorizedData.ip !== req.ip) return error.sendResponse(res, error.ErrorInvalidIPAddress);
-    next();
-}
-
-function roleFromEmail(email: string): boolean {
-    return email === process.env.ADMIN_EMAIL;
 }

@@ -4,8 +4,8 @@ import * as _ from 'underscore';
 import * as jwt from 'jsonwebtoken';
 import * as emailNewAccount from '../emailNewAccount/emailNewAccount';
 import { sendMail } from '../sendMail';
-import * as error from '../errors';
-import { UserModel } from '../userModel';
+import * as error from '../../errors';
+import { UserModel } from '../../users/model';
 
 const signEmailToken = (payload: any) => {
     return jwt.sign(payload, process.env.EMAIL_SECRET,
