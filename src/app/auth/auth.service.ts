@@ -41,7 +41,7 @@ export interface AuthStatus {
 })
 export class AuthService {
   private API_URL = 'http://localhost:9000/api/';  // Development
-  authStatus$ = new BehaviorSubject<AuthStatus>({ authenticated: false, activated: false, username: '', isAdmin: false });
+  authStatus$ = new BehaviorSubject<AuthStatus>(null);
 
   constructor(private http: HttpClient, private storage: LocalStorageService) {}
 
